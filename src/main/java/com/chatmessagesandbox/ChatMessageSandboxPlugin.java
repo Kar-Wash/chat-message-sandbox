@@ -1,3 +1,4 @@
+
 package com.chatmessagesandbox;
 
 import java.awt.BorderLayout;
@@ -34,7 +35,6 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.MessageNode;
-
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -43,12 +43,18 @@ import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.PluginPanel;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @PluginDescriptor(
-    name = "Fake PM Renderer",
-    description = "Renders test private messages using RuneLite's native chat renderer"
+    name = "Chat Message Sandbox",
+    description = "Adds manually composed messages to the local RuneLite chat renderer"
 )
 public class ChatMessageSandboxPlugin extends Plugin
 {
+    private static final Logger log =
+        LoggerFactory.getLogger(ChatMessageSandboxPlugin.class);
+
     @Inject
     private Client client;
 
@@ -58,19 +64,19 @@ public class ChatMessageSandboxPlugin extends Plugin
     @Inject
     private ClientToolbar clientToolbar;
 
-    private FakePmPanel panel;
+    private MessagePanel panel;
     private NavigationButton navButton;
 
     @Override
     protected void startUp()
     {
         // Create the sidebar panel
-        panel = new FakePmPanel();
+        panel = new MessagePanel();
         panel.setSendAction(this::sendMessage);
 
         // Register the sidebar button
         navButton = NavigationButton.builder()
-            .tooltip("Fake PM Renderer")
+            .tooltip("Chat Message Sandbox")
             .icon(createIcon())
             .priority(5)
             .panel(panel)
@@ -78,17 +84,22 @@ public class ChatMessageSandboxPlugin extends Plugin
 
         clientToolbar.addNavigation(navButton);
 
-        System.out.println("Fake PM Renderer started!");
+        log.info("Chat Message Sandbox started!");
     }
 
     @Override
     protected void shutDown()
     {
-        // Remove the sidebar button when plugin stops
-        clientToolbar.removeNavigation(navButton);
+        // Remove the sidebar button
+        if (navButton != null)
+        {
+            clientToolbar.removeNavigation(navButton);
+        }
 
         panel = null;
         navButton = null;
+
+        log.info("Chat Message Sandbox stopped!");
     }
 
     /**
@@ -113,7 +124,7 @@ public class ChatMessageSandboxPlugin extends Plugin
             return;
         }
 
-        // Parse the time entered in the panel
+        // Parse the timestamp entered in the panel
         final long timestamp;
 
         try
@@ -134,7 +145,7 @@ public class ChatMessageSandboxPlugin extends Plugin
             return;
         }
 
-        // All game-client modifications must run on the client thread
+        // Perform game-client modifications on the client thread
         clientThread.invoke(() ->
         {
             if (client.getGameState() != GameState.LOGGED_IN)
@@ -153,7 +164,7 @@ public class ChatMessageSandboxPlugin extends Plugin
     }
 
     /**
-     * Your original RuneLite chat rendering method.
+     * Adds a message using RuneLite's native chat renderer.
      */
     private void addMessage(
         ChatMessageType type,
@@ -176,7 +187,7 @@ public class ChatMessageSandboxPlugin extends Plugin
     }
 
     /**
-     * Creates a small chat bubble icon without requiring an image file.
+     * Creates the sidebar icon.
      */
     private BufferedImage createIcon()
     {
@@ -211,9 +222,9 @@ public class ChatMessageSandboxPlugin extends Plugin
     }
 
     /**
-     * The actual RuneLite sidebar UI.
+     * Sidebar interface for composing chat messages.
      */
-    private static class FakePmPanel extends PluginPanel
+    private static class MessagePanel extends PluginPanel
     {
         private final JTextField username = new JTextField("Gnaes");
 
@@ -231,7 +242,7 @@ public class ChatMessageSandboxPlugin extends Plugin
 
         private Runnable sendAction;
 
-        FakePmPanel()
+        MessagePanel()
         {
             super(false);
 
@@ -243,7 +254,7 @@ public class ChatMessageSandboxPlugin extends Plugin
             content.setBorder(new EmptyBorder(12, 10, 12, 10));
             content.setBackground(ColorScheme.DARK_GRAY_COLOR);
 
-            // Sender
+            // Username
             addField(content, "Username", username);
 
             // Message
